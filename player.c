@@ -70,6 +70,8 @@ static struct gbs_output_buffer buf = {
 	.pos  = 0,
 };
 
+static struct timespec pause_wait_time;
+
 /* configuration directives */
 const struct cfg_option options[] = {
 	{ "endian", &endian, cfg_endian },
@@ -276,6 +278,15 @@ void toggle_pause()
 	pause_mode = !pause_mode;
 	if (sound_pause)
 		sound_pause(pause_mode);
+}
+
+long step_emulation(struct gbs *gbs) {
+	if (is_running()) {
+		return gbs_step(gbs, refresh_delay);
+	}
+
+	nanosleep(&pause_wait_time, NULL);
+	return true;
 }
 
 void update_displaytime(struct displaytime *time, const struct gbs_status *status)
@@ -544,6 +555,9 @@ struct gbs *common_init(int argc, char **argv)
 	} else if (subsong_stop >= songs) {
 		subsong_stop = -1;
 	}
+
+	/* convert delay to internal wait */
+	pause_wait_time.tv_nsec = refresh_delay * 1000000;
 
 	// FIXME: proper configuration interface to gbs, this is just quickly slapped toghether
 	gbs_configure(gbs, subsong_start, subsong_timeout, silence_timeout, subsong_gap, fadeout);
